@@ -1,8 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Armchair, CheckCircle, Loader2, Users } from "lucide-react";
+import {
+  Armchair,
+  CalendarDays,
+  CheckCircle,
+  Clock,
+  Loader2,
+  Minus,
+  Plus,
+  Users,
+} from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { useLanguage } from "@/components/LanguageProvider";
 
 type RestaurantTable = {
   id: string;
@@ -10,6 +20,13 @@ type RestaurantTable = {
   seats: number;
   zone: string | null;
   status: string;
+  shape: string | null;
+  position_x: number | null;
+  position_y: number | null;
+  width: number | null;
+  height: number | null;
+  rotation: number | null;
+  color: string | null;
 };
 
 type MenuItem = {
@@ -28,38 +45,131 @@ type BookingSectionProps = {
   menuItems: MenuItem[];
 };
 
-type TableShape = "square" | "rectangle" | "circle" | "diamond";
-
-const tableLayouts: Record<
-  string,
-  {
-    shape: TableShape;
-    className: string;
-  }
-> = {
-  T1: {
-    shape: "diamond",
-    className: "col-start-1 row-start-1",
+const bookingText = {
+  en: {
+    floorMap: "Choose Your Table",
+    floorMapSubtitle:
+      "Select an available table from the live restaurant floor map.",
+    zone1: "Zone 1",
+    zone2: "Zone 2",
+    zone3: "Zone 3",
+    dineIn: "Dine-in",
+    pickup: "Pick-up",
+    available: "Available",
+    booked: "Booked",
+    reserved: "Reserved",
+    blocked: "Blocked",
+    selected: "Selected",
+    seats: "seats",
+    table: "Table",
+    selectedTable: "Selected table",
+    noTableSelected: "No table selected",
+    menu: "Menu",
+    menuSubtitle: "Pre-order your meals before arrival.",
+    noMenu: "No menu items yet.",
+    bookingForm: "Booking Details",
+    bookingFormText: "Fill in your reservation details.",
+    name: "Your Name",
+    namePlaceholder: "John Smith",
+    phone: "Phone Number",
+    phonePlaceholder: "+998 90 123 45 67",
+    date: "Date",
+    time: "Time",
+    guests: "Guests",
+    preorder: "Pre-order summary",
+    noMeals: "No meals selected yet.",
+    total: "Total",
+    confirm: "Confirm Booking",
+    saving: "Saving...",
+    chooseTableError: "Please select an available table first.",
+    fillError: "Please fill in all booking details.",
+    loginError: "Please login again before booking.",
+    success: "Booking created successfully! Restaurant will confirm it soon.",
+    bookingError: "Booking error:",
+    preorderError: "Pre-order error:",
   },
-  T2: {
-    shape: "rectangle",
-    className: "col-start-3 row-start-1",
+  uz: {
+    floorMap: "Stolingizni tanlang",
+    floorMapSubtitle:
+      "Restoranning jonli floor map’idan bo‘sh stolni tanlang.",
+    zone1: "Zona 1",
+    zone2: "Zona 2",
+    zone3: "Zona 3",
+    dineIn: "Zalda",
+    pickup: "Olib ketish",
+    available: "Bo‘sh",
+    booked: "Band",
+    reserved: "Rezerv",
+    blocked: "Bloklangan",
+    selected: "Tanlangan",
+    seats: "o‘rin",
+    table: "Stol",
+    selectedTable: "Tanlangan stol",
+    noTableSelected: "Stol tanlanmagan",
+    menu: "Menyu",
+    menuSubtitle: "Kelishdan oldin ovqatlarni oldindan buyurtma qiling.",
+    noMenu: "Hali menyu itemlari yo‘q.",
+    bookingForm: "Bron ma’lumotlari",
+    bookingFormText: "Bron qilish uchun ma’lumotlarni to‘ldiring.",
+    name: "Ismingiz",
+    namePlaceholder: "Ali Valiyev",
+    phone: "Telefon raqam",
+    phonePlaceholder: "+998 90 123 45 67",
+    date: "Sana",
+    time: "Vaqt",
+    guests: "Mehmonlar",
+    preorder: "Oldindan buyurtma xulosasi",
+    noMeals: "Hali ovqat tanlanmagan.",
+    total: "Jami",
+    confirm: "Bronni tasdiqlash",
+    saving: "Saqlanmoqda...",
+    chooseTableError: "Avval bo‘sh stol tanlang.",
+    fillError: "Barcha bron ma’lumotlarini to‘ldiring.",
+    loginError: "Bron qilishdan oldin qayta login qiling.",
+    success: "Bron muvaffaqiyatli yaratildi! Restoran tez orada tasdiqlaydi.",
+    bookingError: "Bron xatosi:",
+    preorderError: "Oldindan buyurtma xatosi:",
   },
-  T3: {
-    shape: "square",
-    className: "col-start-5 row-start-1",
-  },
-  T4: {
-    shape: "rectangle",
-    className: "col-start-1 row-start-3",
-  },
-  T5: {
-    shape: "rectangle",
-    className: "col-start-3 row-start-3",
-  },
-  T6: {
-    shape: "circle",
-    className: "col-start-5 row-start-3",
+  ru: {
+    floorMap: "Выберите стол",
+    floorMapSubtitle: "Выберите свободный стол на живой карте ресторана.",
+    zone1: "Зона 1",
+    zone2: "Зона 2",
+    zone3: "Зона 3",
+    dineIn: "В зале",
+    pickup: "Самовывоз",
+    available: "Свободен",
+    booked: "Занят",
+    reserved: "Резерв",
+    blocked: "Заблокирован",
+    selected: "Выбран",
+    seats: "мест",
+    table: "Стол",
+    selectedTable: "Выбранный стол",
+    noTableSelected: "Стол не выбран",
+    menu: "Меню",
+    menuSubtitle: "Закажите блюда заранее до прихода.",
+    noMenu: "Пункты меню ещё не добавлены.",
+    bookingForm: "Детали бронирования",
+    bookingFormText: "Заполните данные для бронирования.",
+    name: "Ваше имя",
+    namePlaceholder: "Иван Иванов",
+    phone: "Номер телефона",
+    phonePlaceholder: "+998 90 123 45 67",
+    date: "Дата",
+    time: "Время",
+    guests: "Гости",
+    preorder: "Предзаказ",
+    noMeals: "Блюда ещё не выбраны.",
+    total: "Итого",
+    confirm: "Подтвердить бронирование",
+    saving: "Сохранение...",
+    chooseTableError: "Сначала выберите свободный стол.",
+    fillError: "Заполните все данные бронирования.",
+    loginError: "Пожалуйста, войдите снова перед бронированием.",
+    success: "Бронирование создано! Ресторан скоро подтвердит его.",
+    bookingError: "Ошибка бронирования:",
+    preorderError: "Ошибка предзаказа:",
   },
 };
 
@@ -68,7 +178,10 @@ export default function BookingSection({
   tables,
   menuItems,
 }: BookingSectionProps) {
-  const [selectedTableId, setSelectedTableId] = useState<string>("");
+  const { language } = useLanguage();
+  const text = bookingText[language];
+
+  const [selectedTableId, setSelectedTableId] = useState("");
   const [selectedItems, setSelectedItems] = useState<Record<string, number>>({});
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -91,35 +204,48 @@ export default function BookingSection({
     return total + Number(item.price) * item.quantity;
   }, 0);
 
-  function getTableStyle(table: RestaurantTable) {
-    const isSelected = selectedTableId === table.id;
-    const isAvailable = table.status === "available";
-
-    if (isSelected) {
-      return "border-orange-500 bg-orange-500 text-white shadow-xl shadow-orange-200";
+  function getStatusColor(table: RestaurantTable) {
+    if (selectedTableId === table.id) {
+      return "#f97316";
     }
 
-    if (isAvailable) {
-      return "border-blue-300 bg-blue-500 text-white hover:bg-blue-600";
+    if (table.status === "available") {
+      return table.color || "#38bdf8";
     }
 
-    return "cursor-not-allowed border-gray-300 bg-gray-400 text-gray-800 opacity-70";
+    if (table.status === "reserved") {
+      return "#a855f7";
+    }
+
+    if (table.status === "blocked") {
+      return "#94a3b8";
+    }
+
+    return "#9ca3af";
   }
 
-  function getShapeStyle(shape: TableShape) {
-    if (shape === "circle") {
-      return "h-28 w-28 rounded-full";
+  function getTableShape(table: RestaurantTable) {
+    if (table.shape === "circle") {
+      return "rounded-full";
     }
 
-    if (shape === "rectangle") {
-      return "h-24 w-40 rounded-2xl";
+    if (table.shape === "diamond") {
+      return "rounded-2xl rotate-45";
     }
 
-    if (shape === "diamond") {
-      return "h-28 w-28 rotate-45 rounded-2xl";
+    if (table.shape === "rectangle") {
+      return "rounded-2xl";
     }
 
-    return "h-28 w-28 rounded-2xl";
+    return "rounded-2xl";
+  }
+
+  function getTableInnerShape(table: RestaurantTable) {
+    if (table.shape === "diamond") {
+      return "-rotate-45";
+    }
+
+    return "";
   }
 
   function addMenuItem(itemId: string) {
@@ -149,25 +275,35 @@ export default function BookingSection({
   async function handleBookingSubmit() {
     setMessage("");
 
-    if (!selectedTableId) {
-      setMessage("Please select a table first.");
+    if (!selectedTableId || selectedTable?.status !== "available") {
+      setMessage(text.chooseTableError);
       return;
     }
 
     if (!customerName || !customerPhone || !bookingDate || !bookingTime) {
-      setMessage("Please fill in all booking details.");
+      setMessage(text.fillError);
       return;
     }
 
     setIsSaving(true);
+
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !userData.user) {
+      setMessage(text.loginError);
+      setIsSaving(false);
+      return;
+    }
 
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .insert({
         restaurant_id: restaurantId,
         table_id: selectedTableId,
+        customer_id: userData.user.id,
         customer_name: customerName,
         customer_phone: customerPhone,
+        customer_email: userData.user.email,
         booking_date: bookingDate,
         booking_time: bookingTime,
         guests_count: Number(guestsCount),
@@ -180,7 +316,7 @@ export default function BookingSection({
       .single();
 
     if (bookingError || !booking) {
-      setMessage(`Booking error: ${bookingError?.message || "Unknown error"}`);
+      setMessage(`${text.bookingError} ${bookingError?.message || ""}`);
       setIsSaving(false);
       return;
     }
@@ -198,13 +334,13 @@ export default function BookingSection({
         .insert(bookingItemsPayload);
 
       if (itemsError) {
-        setMessage(`Pre-order error: ${itemsError.message}`);
+        setMessage(`${text.preorderError} ${itemsError.message}`);
         setIsSaving(false);
         return;
       }
     }
 
-    setMessage("Booking created successfully! Restaurant will confirm it soon.");
+    setMessage(text.success);
     setCustomerName("");
     setCustomerPhone("");
     setBookingDate("");
@@ -216,179 +352,155 @@ export default function BookingSection({
   }
 
   return (
-    <div className="mt-8 grid gap-8 lg:grid-cols-[1.4fr_0.8fr]">
+    <div className="mt-8 grid gap-8 lg:grid-cols-[1.35fr_0.75fr]">
       <section className="space-y-8">
-        <div className="rounded-[2rem] border border-orange-100 bg-[#151c27] p-5 shadow-sm">
-          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-2xl font-black text-white">
-                Open Table Map
-              </h2>
-              <p className="mt-1 text-sm text-gray-400">
-                Choose an available table from the restaurant floor.
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-bold text-white">
-              Main Floor
-            </div>
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-            <aside className="rounded-3xl bg-[#202836] p-4">
-              <div className="mb-4 rounded-2xl bg-[#2b3444] px-4 py-3 text-gray-300">
-                Search by name
-              </div>
-
-              <div className="mb-5">
-                <h3 className="font-bold text-white">Reservations</h3>
-                <p className="mt-1 text-xs text-gray-400">
-                  Today by scheduled time
+        <div className="overflow-hidden rounded-[2rem] border border-sky-100 bg-white shadow-sm">
+          <div className="border-b border-sky-100 bg-white p-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-2xl font-black text-gray-950">
+                  {text.floorMap}
+                </h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  {text.floorMapSubtitle}
                 </p>
               </div>
 
-              <div className="space-y-3">
-                {[
-                  {
-                    time: "10:00 am",
-                    name: "Linda Streets",
-                    guests: 2,
-                    table: "T1",
-                  },
-                  {
-                    time: "10:15 am",
-                    name: "Randall Bales",
-                    guests: 4,
-                    table: "T3",
-                  },
-                  {
-                    time: "11:15 am",
-                    name: "Hosea Hegmann",
-                    guests: 5,
-                    table: "T5",
-                  },
-                ].map((booking) => (
-                  <div
-                    key={booking.name}
-                    className="rounded-2xl border border-white/5 bg-[#161d29] p-3"
-                  >
-                    <div className="flex items-center justify-between text-xs text-gray-400">
-                      <span>{booking.time}</span>
-                      <span>{booking.table}</span>
-                    </div>
-
-                    <p className="mt-1 font-bold text-gray-100">
-                      {booking.name}
-                    </p>
-
-                    <p className="mt-1 flex items-center gap-1 text-xs text-gray-400">
-                      <Users size={13} />
-                      {booking.guests} guests
-                    </p>
-                  </div>
-                ))}
+              <div className="flex flex-wrap items-center gap-3">
+                <button className="rounded-2xl bg-sky-500 px-5 py-3 font-black text-white">
+                  {text.zone1}
+                </button>
+                <button className="rounded-2xl bg-gray-100 px-5 py-3 font-black text-gray-600">
+                  {text.zone2}
+                </button>
+                <button className="rounded-2xl bg-gray-100 px-5 py-3 font-black text-gray-600">
+                  {text.zone3}
+                </button>
               </div>
-            </aside>
+            </div>
+          </div>
 
-            <section className="relative min-h-[520px] overflow-hidden rounded-3xl bg-[#1d2430] p-6">
-              <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <button className="rounded-xl bg-[#111827] px-4 py-2 font-bold text-white">
-                    Today
-                  </button>
-                  <button className="rounded-xl bg-[#111827] px-4 py-2 font-bold text-white">
-                    Lunch
-                  </button>
-                </div>
+          <div className="grid lg:grid-cols-[1fr_280px]">
+            <div className="relative h-[650px] overflow-hidden bg-[#f8fbff]">
+              <div
+                className="absolute inset-0 opacity-80"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(#e5edf7 1px, transparent 1px), linear-gradient(90deg, #e5edf7 1px, transparent 1px)",
+                  backgroundSize: "36px 36px",
+                }}
+              />
 
-                <div className="flex flex-wrap gap-3 text-xs text-gray-300">
-                  <span className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded bg-blue-500" />
-                    Available
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded bg-gray-400" />
-                    Booked
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded bg-orange-500" />
-                    Selected
-                  </span>
-                </div>
-              </div>
+              <div className="absolute left-10 top-20 h-[430px] w-[90%] rounded-[2rem] border-[10px] border-gray-200 opacity-70" />
 
-              <div className="grid min-h-[390px] grid-cols-5 grid-rows-4 gap-8">
-                {tables.map((table) => {
-                  const layout = tableLayouts[table.table_name] || {
-                    shape: "square" as TableShape,
-                    className: "",
-                  };
+              <div className="absolute left-[18%] top-[12%] h-8 w-[58%] bg-gray-200 opacity-60" />
+              <div className="absolute left-[22%] top-[54%] h-8 w-[20%] rotate-[-42deg] bg-gray-200 opacity-60" />
+              <div className="absolute left-[58%] top-[26%] h-8 w-[22%] rotate-[-45deg] bg-gray-200 opacity-60" />
 
-                  const isAvailable = table.status === "available";
-                  const shapeStyle = getShapeStyle(layout.shape);
+              <div className="relative h-full w-full">
+                {tables.map((table, index) => {
+                  const isClickable = table.status === "available";
+                  const x = table.position_x ?? 60 + (index % 4) * 160;
+                  const y = table.position_y ?? 80 + Math.floor(index / 4) * 150;
+                  const width = table.width ?? 92;
+                  const height = table.height ?? 92;
 
                   return (
                     <button
                       key={table.id}
                       type="button"
-                      disabled={!isAvailable}
+                      disabled={!isClickable}
                       onClick={() => setSelectedTableId(table.id)}
-                      className={`relative flex items-center justify-center border-2 transition ${shapeStyle} ${layout.className} ${getTableStyle(
+                      style={{
+                        left: x,
+                        top: y,
+                        width,
+                        height,
+                        backgroundColor: getStatusColor(table),
+                        transform: `rotate(${table.rotation || 0}deg)`,
+                      }}
+                      className={`absolute flex flex-col items-center justify-center border-[6px] border-white text-white shadow-lg transition hover:scale-105 disabled:cursor-not-allowed disabled:hover:scale-100 ${getTableShape(
                         table
                       )}`}
                     >
-                      <div
-                        className={`flex flex-col items-center justify-center ${
-                          layout.shape === "diamond" ? "-rotate-45" : ""
-                        }`}
+                      <span
+                        className={`flex flex-col items-center justify-center ${getTableInnerShape(
+                          table
+                        )}`}
                       >
-                        <Armchair size={22} />
-                        <span className="mt-1 text-xs font-semibold">
-                          {table.seats} seats
+                        <span className="rounded-full bg-white/25 px-2 py-0.5 text-xs font-black">
+                          {table.seats}
                         </span>
-                        <span className="text-lg font-black">
+                        <span className="mt-1 text-xl font-black">
                           {table.table_name}
                         </span>
-                      </div>
+                      </span>
                     </button>
                   );
                 })}
               </div>
+            </div>
 
-              <div className="mt-5 rounded-3xl bg-[#111827] p-4 text-white">
-                {selectedTable ? (
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                      <p className="text-sm text-gray-400">Selected Table</p>
-                      <h3 className="mt-1 text-xl font-black">
-                        {selectedTable.table_name} • {selectedTable.seats} seats
-                      </h3>
-                      <p className="mt-1 text-sm text-gray-400">
-                        Zone: {selectedTable.zone || "Main Hall"}
-                      </p>
-                    </div>
+            <aside className="border-l border-sky-100 bg-white p-5">
+              <h3 className="text-xl font-black text-gray-950">
+                Floor Plan Actions
+              </h3>
 
-                    <div className="rounded-2xl bg-orange-500 px-5 py-3 text-sm font-black">
-                      Ready to book
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-400">
-                    Choose an available table to continue your booking.
-                  </p>
-                )}
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-sky-100 bg-sky-50 p-4 text-center">
+                  <p className="font-black text-sky-600">{text.dineIn}</p>
+                </div>
+
+                <div className="rounded-2xl border border-sky-100 bg-sky-50 p-4 text-center">
+                  <p className="font-black text-sky-600">{text.pickup}</p>
+                </div>
               </div>
-            </section>
+
+              <div className="mt-6 space-y-3 text-sm">
+                <div className="flex items-center justify-between rounded-2xl bg-sky-50 p-3">
+                  <span className="font-bold text-gray-700">
+                    {text.available}
+                  </span>
+                  <span className="h-4 w-4 rounded bg-sky-500" />
+                </div>
+
+                <div className="flex items-center justify-between rounded-2xl bg-purple-50 p-3">
+                  <span className="font-bold text-gray-700">
+                    {text.reserved}
+                  </span>
+                  <span className="h-4 w-4 rounded bg-purple-500" />
+                </div>
+
+                <div className="flex items-center justify-between rounded-2xl bg-gray-50 p-3">
+                  <span className="font-bold text-gray-700">{text.booked}</span>
+                  <span className="h-4 w-4 rounded bg-gray-400" />
+                </div>
+
+                <div className="flex items-center justify-between rounded-2xl bg-orange-50 p-3">
+                  <span className="font-bold text-gray-700">
+                    {text.selected}
+                  </span>
+                  <span className="h-4 w-4 rounded bg-orange-500" />
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-3xl bg-gray-950 p-5 text-white">
+                <p className="text-sm text-gray-400">{text.selectedTable}</p>
+
+                <h4 className="mt-2 text-2xl font-black">
+                  {selectedTable
+                    ? `${selectedTable.table_name} • ${selectedTable.seats} ${text.seats}`
+                    : text.noTableSelected}
+                </h4>
+              </div>
+            </aside>
           </div>
         </div>
 
         <div className="rounded-[2rem] border border-orange-100 bg-white p-6 shadow-sm">
           <div className="mb-6">
-            <h2 className="text-2xl font-black text-gray-950">Menu</h2>
-
-            <p className="mt-1 text-gray-500">
-              Pre-order your meals before arrival.
-            </p>
+            <h2 className="text-2xl font-black text-gray-950">{text.menu}</h2>
+            <p className="mt-1 text-gray-500">{text.menuSubtitle}</p>
           </div>
 
           {menuItems.length > 0 ? (
@@ -414,7 +526,6 @@ export default function BookingSection({
                         <h3 className="font-black text-gray-950">
                           {item.name}
                         </h3>
-
                         <p className="mt-1 text-sm text-gray-500">
                           {item.category || "Dish"}
                         </p>
@@ -426,7 +537,7 @@ export default function BookingSection({
                     </div>
 
                     <p className="mt-3 text-sm leading-6 text-gray-600">
-                      {item.description || "Delicious menu item."}
+                      {item.description || "Dish"}
                     </p>
 
                     <div className="mt-4 flex items-center gap-3">
@@ -435,7 +546,7 @@ export default function BookingSection({
                         onClick={() => removeMenuItem(item.id)}
                         className="flex h-11 w-11 items-center justify-center rounded-xl border border-orange-200 font-black text-orange-600 hover:bg-orange-50"
                       >
-                        -
+                        <Minus size={18} />
                       </button>
 
                       <div className="flex-1 rounded-xl bg-orange-50 px-4 py-3 text-center font-black text-orange-700">
@@ -447,7 +558,7 @@ export default function BookingSection({
                         onClick={() => addMenuItem(item.id)}
                         className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500 font-black text-white hover:bg-orange-600"
                       >
-                        +
+                        <Plus size={18} />
                       </button>
                     </div>
                   </div>
@@ -456,86 +567,97 @@ export default function BookingSection({
             </div>
           ) : (
             <p className="rounded-2xl bg-orange-50 p-5 text-gray-600">
-              No menu items added yet.
+              {text.noMenu}
             </p>
           )}
         </div>
       </section>
 
       <aside className="h-fit rounded-[2rem] border border-orange-100 bg-white p-6 shadow-sm lg:sticky lg:top-8">
-        <h2 className="text-2xl font-black text-gray-950">Book a Table</h2>
+        <h2 className="text-2xl font-black text-gray-950">
+          {text.bookingForm}
+        </h2>
 
-        <p className="mt-2 text-sm text-gray-500">
-          Fill in your booking details and send your request to the restaurant.
-        </p>
+        <p className="mt-2 text-sm text-gray-500">{text.bookingFormText}</p>
 
         <div className="mt-5 rounded-2xl bg-orange-50 p-4">
-          <p className="text-sm font-bold text-gray-700">Selected table</p>
+          <p className="text-sm font-bold text-gray-700">
+            {text.selectedTable}
+          </p>
+
           <p className="mt-1 text-lg font-black text-orange-600">
             {selectedTable
-              ? `${selectedTable.table_name} • ${selectedTable.seats} seats`
-              : "No table selected"}
+              ? `${selectedTable.table_name} • ${selectedTable.seats} ${text.seats}`
+              : text.noTableSelected}
           </p>
         </div>
 
         <form className="mt-6 space-y-4">
           <div>
             <label className="mb-2 block text-sm font-bold text-gray-700">
-              Your Name
+              {text.name}
             </label>
 
             <input
               type="text"
               value={customerName}
               onChange={(event) => setCustomerName(event.target.value)}
-              placeholder="John Smith"
+              placeholder={text.namePlaceholder}
               className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-orange-500"
             />
           </div>
 
           <div>
             <label className="mb-2 block text-sm font-bold text-gray-700">
-              Phone Number
+              {text.phone}
             </label>
 
             <input
               type="tel"
               value={customerPhone}
               onChange={(event) => setCustomerPhone(event.target.value)}
-              placeholder="+998 90 123 45 67"
+              placeholder={text.phonePlaceholder}
               className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-orange-500"
             />
           </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-bold text-gray-700">
-              Date
-            </label>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-2 block text-sm font-bold text-gray-700">
+                {text.date}
+              </label>
 
-            <input
-              type="date"
-              value={bookingDate}
-              onChange={(event) => setBookingDate(event.target.value)}
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-orange-500"
-            />
+              <div className="relative">
+                <CalendarDays className="absolute left-4 top-3.5 text-gray-400" size={18} />
+                <input
+                  type="date"
+                  value={bookingDate}
+                  onChange={(event) => setBookingDate(event.target.value)}
+                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 pl-11 outline-none focus:border-orange-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-bold text-gray-700">
+                {text.time}
+              </label>
+
+              <div className="relative">
+                <Clock className="absolute left-4 top-3.5 text-gray-400" size={18} />
+                <input
+                  type="time"
+                  value={bookingTime}
+                  onChange={(event) => setBookingTime(event.target.value)}
+                  className="w-full rounded-2xl border border-gray-200 px-4 py-3 pl-11 outline-none focus:border-orange-500"
+                />
+              </div>
+            </div>
           </div>
 
           <div>
             <label className="mb-2 block text-sm font-bold text-gray-700">
-              Time
-            </label>
-
-            <input
-              type="time"
-              value={bookingTime}
-              onChange={(event) => setBookingTime(event.target.value)}
-              className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-orange-500"
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-bold text-gray-700">
-              Guests
+              {text.guests}
             </label>
 
             <input
@@ -548,7 +670,7 @@ export default function BookingSection({
           </div>
 
           <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4">
-            <p className="font-black text-gray-950">Pre-order summary</p>
+            <p className="font-black text-gray-950">{text.preorder}</p>
 
             {selectedMenuItems.length > 0 ? (
               <div className="mt-3 space-y-2">
@@ -568,25 +690,23 @@ export default function BookingSection({
                 ))}
 
                 <div className="border-t border-orange-200 pt-3 font-black text-orange-700">
-                  Total: {totalAmount.toLocaleString()} UZS
+                  {text.total}: {totalAmount.toLocaleString()} UZS
                 </div>
               </div>
             ) : (
-              <p className="mt-2 text-sm text-gray-500">
-                No meals selected yet.
-              </p>
+              <p className="mt-2 text-sm text-gray-500">{text.noMeals}</p>
             )}
           </div>
 
           {message && (
             <div
               className={`rounded-2xl p-4 text-sm font-bold ${
-                message.includes("successfully")
+                message === text.success
                   ? "bg-green-50 text-green-700"
                   : "bg-red-50 text-red-700"
               }`}
             >
-              {message.includes("successfully") && (
+              {message === text.success && (
                 <CheckCircle className="mb-2" size={20} />
               )}
               {message}
@@ -600,7 +720,7 @@ export default function BookingSection({
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 px-5 py-4 font-black text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-70"
           >
             {isSaving && <Loader2 className="animate-spin" size={18} />}
-            {isSaving ? "Saving..." : "Confirm Booking"}
+            {isSaving ? text.saving : text.confirm}
           </button>
         </form>
       </aside>

@@ -3,6 +3,7 @@ import { ArrowLeft, Clock, MapPin, Phone, Star, Utensils } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import BookingSection from "@/components/BookingSection";
 import LogoutButton from "@/components/LogoutButton";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 type RestaurantPageProps = {
   params: Promise<{
@@ -26,7 +27,9 @@ export default async function UserRestaurantBookingPage({
 
   const { data: tables, error: tablesError } = await supabase
     .from("restaurant_tables")
-    .select("id, table_name, seats, zone, status")
+    .select(
+      "id, table_name, seats, zone, status, shape, position_x, position_y, width, height, rotation, color"
+    )
     .eq("restaurant_id", id)
     .order("table_name", { ascending: true });
 
@@ -76,10 +79,16 @@ export default async function UserRestaurantBookingPage({
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500 text-white">
               <Utensils size={18} />
             </div>
-            <span className="text-xl font-black">DineFlow User</span>
+
+            <span className="text-xl font-black text-gray-950">
+              DineFlow User
+            </span>
           </Link>
 
-          <LogoutButton />
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher />
+            <LogoutButton />
+          </div>
         </div>
       </header>
 

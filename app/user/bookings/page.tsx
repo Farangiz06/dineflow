@@ -1,0 +1,331 @@
+"use client";
+
+import Link from "next/link";
+import {
+  ArrowLeft,
+  CalendarDays,
+  Clock,
+  Table2,
+  Utensils,
+  Users,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import LogoutButton from "@/components/LogoutButton";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useLanguage } from "@/components/LanguageProvider";
+import { supabase } from "@/lib/supabaseClient";
+
+type RestaurantRelation = {
+  name: string;
+  city: string | null;
+  cuisine_type: string | null;
+};
+
+type RestaurantTableRelation = {
+  table_name: string;
+  seats: number;
+};
+
+type Booking = {
+  id: string;
+  booking_date: string;
+  booking_time: string;
+  guests_count: number;
+  status: string;
+  notes: string | null;
+  restaurants: RestaurantRelation[] | RestaurantRelation | null;
+  restaurant_tables: RestaurantTableRelation[] | RestaurantTableRelation | null;
+};
+
+const bookingsText = {
+  en: {
+    title: "My Bookings",
+    subtitle: "See your restaurant reservations and booking status.",
+    back: "Back to User Panel",
+    noBookings: "No bookings yet",
+    noBookingsText:
+      "When you book a restaurant, your reservation will appear here.",
+    browse: "Browse Restaurants",
+    guests: "guests",
+    table: "Table",
+    status: "Status",
+    preorder: "Pre-order",
+    loading: "Loading...",
+  },
+  uz: {
+    title: "Mening bronlarim",
+    subtitle: "Restoran bronlaringiz va statuslarini ko‘ring.",
+    back: "User panelga qaytish",
+    noBookings: "Hali bron yo‘q",
+    noBookingsText:
+      "Restoran bron qilganingizdan keyin bronlaringiz shu yerda chiqadi.",
+    browse: "Restoranlarni ko‘rish",
+    guests: "mehmon",
+    table: "Stol",
+    status: "Status",
+    preorder: "Oldindan buyurtma",
+    loading: "Yuklanmoqda...",
+  },
+  ru: {
+    title: "Мои бронирования",
+    subtitle: "Смотрите свои бронирования и их статус.",
+    back: "Назад в кабинет",
+    noBookings: "Бронирований пока нет",
+    noBookingsText:
+      "Когда вы забронируете ресторан, запись появится здесь.",
+    browse: "Посмотреть рестораны",
+    guests: "гостей",
+    table: "Стол",
+    status: "Статус",
+    preorder: "Предзаказ",
+    loading: "Загрузка...",
+  },
+};
+
+function getRestaurant(
+  restaurants: Booking["restaurants"]
+): RestaurantRelation | null {
+  if (!restaurants) {
+    return null;
+  }
+
+  if (Array.isArray(restaurants)) {
+    return restaurants[0] || null;
+  }
+
+  return restaurants;
+}
+
+function getRestaurantTable(
+  restaurantTables: Booking["restaurant_tables"]
+): RestaurantTableRelation | null {
+  if (!restaurantTables) {
+    return null;
+  }
+
+  if (Array.isArray(restaurantTables)) {
+    return restaurantTables[0] || null;
+  }
+
+  return restaurantTables;
+}
+
+function getStatusStyle(status: string) {
+  if (status === "approved") {
+    return "bg-green-50 text-green-700";
+  }
+
+  if (status === "cancelled") {
+    return "bg-red-50 text-red-700";
+  }
+
+  if (status === "completed") {
+    return "bg-blue-50 text-blue-700";
+  }
+
+  return "bg-orange-50 text-orange-700";
+}
+
+export default function UserBookingsPage() {
+  const { language } = useLanguage();
+  const text = bookingsText[language];
+
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadBookings() {
+      setIsLoading(true);
+
+      const { data: userData } = await supabase.auth.getUser();
+
+      if (!userData.user) {
+        setBookings([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("bookings")
+        .select(
+          `
+          id,
+          booking_date,
+          booking_time,
+          guests_count,
+          status,
+          notes,
+          restaurants (
+            name,
+            city,
+            cuisine_type
+          ),
+          restaurant_tables (
+            table_name,
+            seats
+          )
+        `
+        )
+        .eq("customer_id", userData.user.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Bookings error:", error.message);
+        setBookings([]);
+        setIsLoading(false);
+        return;
+      }
+
+      setBookings((data || []) as unknown as Booking[]);
+      setIsLoading(false);
+    }
+
+    loadBookings();
+  }, []);
+
+  return (
+    <main className="min-h-screen bg-[#fffaf5]">
+      <header className="border-b border-orange-100 bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+          <Link href="/user" className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500 text-white">
+              <Utensils size={18} />
+            </div>
+
+            <span className="text-xl font-black text-gray-950">
+              DineFlow User
+            </span>
+          </Link>
+
+          <div className="flex items-center gap-3">
+            <LanguageSwitcher />
+            <LogoutButton />
+          </div>
+        </div>
+      </header>
+
+      <section className="mx-auto max-w-7xl px-6 py-10">
+        <Link
+          href="/user"
+          className="mb-8 inline-flex items-center gap-2 font-bold text-gray-600 hover:text-orange-600"
+        >
+          <ArrowLeft size={18} />
+          {text.back}
+        </Link>
+
+        <div className="mb-8">
+          <p className="font-bold text-orange-600">DineFlow</p>
+
+          <h1 className="mt-2 text-4xl font-black text-gray-950">
+            {text.title}
+          </h1>
+
+          <p className="mt-3 max-w-2xl text-gray-600">{text.subtitle}</p>
+        </div>
+
+        {isLoading ? (
+          <div className="rounded-3xl border border-orange-100 bg-white p-8 text-center shadow-sm">
+            <p className="font-bold text-gray-500">{text.loading}</p>
+          </div>
+        ) : bookings.length === 0 ? (
+          <div className="rounded-3xl border border-orange-100 bg-white p-8 text-center shadow-sm">
+            <CalendarDays className="mx-auto text-orange-500" size={42} />
+
+            <h2 className="mt-4 text-2xl font-black text-gray-950">
+              {text.noBookings}
+            </h2>
+
+            <p className="mx-auto mt-2 max-w-md text-gray-500">
+              {text.noBookingsText}
+            </p>
+
+            <Link
+              href="/user/restaurants"
+              className="mt-6 inline-flex rounded-2xl bg-orange-500 px-6 py-3 font-black text-white hover:bg-orange-600"
+            >
+              {text.browse}
+            </Link>
+          </div>
+        ) : (
+          <div className="grid gap-5">
+            {bookings.map((booking) => {
+              const restaurant = getRestaurant(booking.restaurants);
+              const restaurantTable = getRestaurantTable(
+                booking.restaurant_tables
+              );
+
+              return (
+                <div
+                  key={booking.id}
+                  className="rounded-3xl border border-orange-100 bg-white p-6 shadow-sm"
+                >
+                  <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h2 className="text-2xl font-black text-gray-950">
+                          {restaurant?.name || "Restaurant"}
+                        </h2>
+
+                        <span
+                          className={`rounded-full px-4 py-2 text-sm font-black ${getStatusStyle(
+                            booking.status
+                          )}`}
+                        >
+                          {booking.status}
+                        </span>
+                      </div>
+
+                      <p className="mt-1 text-sm text-gray-500">
+                        {restaurant?.cuisine_type || "Restaurant"} •{" "}
+                        {restaurant?.city || "City"}
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap gap-4 text-sm text-gray-600">
+                        <span className="flex items-center gap-2">
+                          <CalendarDays size={17} />
+                          {booking.booking_date}
+                        </span>
+
+                        <span className="flex items-center gap-2">
+                          <Clock size={17} />
+                          {booking.booking_time}
+                        </span>
+
+                        <span className="flex items-center gap-2">
+                          <Users size={17} />
+                          {booking.guests_count} {text.guests}
+                        </span>
+
+                        <span className="flex items-center gap-2">
+                          <Table2 size={17} />
+                          {text.table}:{" "}
+                          {restaurantTable?.table_name || "N/A"}
+                        </span>
+                      </div>
+
+                      {booking.notes && (
+                        <p className="mt-4 rounded-2xl bg-orange-50 p-3 text-sm font-bold text-orange-700">
+                          {text.preorder}: {booking.notes}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl bg-orange-50 px-5 py-4 text-center">
+                      <p className="text-sm font-bold text-gray-500">
+                        {text.status}
+                      </p>
+
+                      <p className="mt-1 text-lg font-black text-orange-600">
+                        {booking.status}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+    </main>
+  );
+}

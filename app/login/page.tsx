@@ -1,13 +1,91 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, Loader2, User, Utensils } from "lucide-react";
+import { Building2, Loader2, Mail, User, Utensils } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useLanguage } from "@/components/LanguageProvider";
+
+const loginText = {
+  en: {
+    welcome: "Welcome back",
+    subtitle: "Login to continue to your panel.",
+    customer: "Customer",
+    customerText: "Access bookings and your profile.",
+    partner: "Partner",
+    partnerText: "Manage your restaurant panel after approval.",
+    emailLabel: "Email Address",
+    emailPlaceholder: "you@example.com",
+    passwordLabel: "Password",
+    passwordPlaceholder: "Your password",
+    loginButton: "Login",
+    loading: "Logging in...",
+    noAccount: "Don’t have an account?",
+    register: "Register",
+    emptyError: "Please enter email and password.",
+    failedError: "Login failed.",
+    profileError: "Profile not found. Please check the profiles table.",
+    checkEmailTitle: "Email not confirmed?",
+    checkEmailText:
+      "If you just registered, please open your email and confirm your account first.",
+    checkEmailButton: "Go to check email page",
+  },
+
+  uz: {
+    welcome: "Xush kelibsiz",
+    subtitle: "Panelingizga kirish uchun login qiling.",
+    customer: "Mijoz",
+    customerText: "Bronlar va profilingizga kiring.",
+    partner: "Hamkor",
+    partnerText: "Tasdiqdan keyin restoran panelingizni boshqaring.",
+    emailLabel: "Email manzil",
+    emailPlaceholder: "you@example.com",
+    passwordLabel: "Parol",
+    passwordPlaceholder: "Parolingiz",
+    loginButton: "Kirish",
+    loading: "Kirilmoqda...",
+    noAccount: "Hali akkauntingiz yo‘qmi?",
+    register: "Ro‘yxatdan o‘tish",
+    emptyError: "Email va parolni kiriting.",
+    failedError: "Login amalga oshmadi.",
+    profileError: "Profil topilmadi. Supabase profiles jadvalini tekshiring.",
+    checkEmailTitle: "Email hali tasdiqlanmadimi?",
+    checkEmailText:
+      "Agar hozirgina ro‘yxatdan o‘tgan bo‘lsangiz, avval emailingizni ochib akkauntni tasdiqlang.",
+    checkEmailButton: "Email tekshirish sahifasiga o‘tish",
+  },
+
+  ru: {
+    welcome: "С возвращением",
+    subtitle: "Войдите, чтобы перейти в свой кабинет.",
+    customer: "Клиент",
+    customerText: "Доступ к бронированиям и профилю.",
+    partner: "Партнёр",
+    partnerText: "Управляйте ресторанным кабинетом после одобрения.",
+    emailLabel: "Email адрес",
+    emailPlaceholder: "you@example.com",
+    passwordLabel: "Пароль",
+    passwordPlaceholder: "Ваш пароль",
+    loginButton: "Войти",
+    loading: "Вход...",
+    noAccount: "Нет аккаунта?",
+    register: "Зарегистрироваться",
+    emptyError: "Введите email и пароль.",
+    failedError: "Не удалось войти.",
+    profileError: "Профиль не найден. Проверьте таблицу profiles в Supabase.",
+    checkEmailTitle: "Email не подтверждён?",
+    checkEmailText:
+      "Если вы только что зарегистрировались, сначала откройте email и подтвердите аккаунт.",
+    checkEmailButton: "Перейти на страницу проверки email",
+  },
+};
 
 export default function LoginPage() {
   const router = useRouter();
+  const { language } = useLanguage();
+  const text = loginText[language];
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,7 +97,7 @@ export default function LoginPage() {
     setMessage("");
 
     if (!email || !password) {
-      setMessage("Please enter email and password.");
+      setMessage(text.emptyError);
       return;
     }
 
@@ -32,7 +110,7 @@ export default function LoginPage() {
       });
 
     if (loginError || !loginData.user) {
-      setMessage(loginError?.message || "Login failed.");
+      setMessage(loginError?.message || text.failedError);
       setIsLoading(false);
       return;
     }
@@ -44,7 +122,7 @@ export default function LoginPage() {
       .single();
 
     if (profileError || !profile) {
-      setMessage("Profile not found. Please check profiles table.");
+      setMessage(text.profileError);
       setIsLoading(false);
       return;
     }
@@ -77,67 +155,72 @@ export default function LoginPage() {
 
       <section className="flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-xl">
-          <Link href="/" className="mb-8 inline-flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500 text-white">
-              <Utensils size={18} />
-            </div>
-            <span className="text-xl font-black">DineFlow</span>
-          </Link>
+          <div className="mb-8 flex items-center justify-between">
+            <Link href="/" className="inline-flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500 text-white">
+                <Utensils size={18} />
+              </div>
+              <span className="text-xl font-black">DineFlow</span>
+            </Link>
 
-          <h1 className="text-4xl font-black text-gray-950">Welcome back</h1>
-          <p className="mt-2 text-gray-500">
-            Login to continue to your panel.
-          </p>
+            <LanguageSwitcher />
+          </div>
+
+          <h1 className="text-4xl font-black text-gray-950">
+            {text.welcome}
+          </h1>
+
+          <p className="mt-2 text-gray-500">{text.subtitle}</p>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4">
               <User className="text-orange-500" />
-              <p className="mt-2 font-black text-gray-950">Customer</p>
+              <p className="mt-2 font-black text-gray-950">{text.customer}</p>
               <p className="mt-1 text-sm text-gray-500">
-                Access bookings and profile.
+                {text.customerText}
               </p>
             </div>
 
             <div className="rounded-2xl border border-orange-100 bg-orange-50 p-4">
               <Building2 className="text-orange-500" />
-              <p className="mt-2 font-black text-gray-950">Partner</p>
-              <p className="mt-1 text-sm text-gray-500">
-                Manage your restaurant panel.
-              </p>
+              <p className="mt-2 font-black text-gray-950">{text.partner}</p>
+              <p className="mt-1 text-sm text-gray-500">{text.partnerText}</p>
             </div>
           </div>
 
           <form className="mt-6 space-y-5 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
             <div>
               <label className="mb-2 block text-sm font-bold text-gray-700">
-                Email Address
+                {text.emailLabel}
               </label>
+
               <input
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
+                placeholder={text.emailPlaceholder}
                 className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-orange-500"
               />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-bold text-gray-700">
-                Password
+                {text.passwordLabel}
               </label>
+
               <input
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Your password"
+                placeholder={text.passwordPlaceholder}
                 className="w-full rounded-2xl border border-gray-200 px-4 py-3 outline-none focus:border-orange-500"
               />
             </div>
 
             {message && (
-              <p className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">
+              <div className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">
                 {message}
-              </p>
+              </div>
             )}
 
             <button
@@ -147,13 +230,36 @@ export default function LoginPage() {
               className="flex w-full items-center justify-center gap-2 rounded-2xl bg-orange-500 px-5 py-4 font-black text-white hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-70"
             >
               {isLoading && <Loader2 className="animate-spin" size={18} />}
-              {isLoading ? "Logging in..." : "Login"}
+              {isLoading ? text.loading : text.loginButton}
             </button>
 
+            <div className="rounded-2xl bg-orange-50 p-4">
+              <div className="flex items-start gap-3">
+                <Mail className="mt-1 text-orange-500" size={20} />
+
+                <div>
+                  <p className="font-black text-gray-950">
+                    {text.checkEmailTitle}
+                  </p>
+
+                  <p className="mt-1 text-sm leading-6 text-gray-600">
+                    {text.checkEmailText}
+                  </p>
+
+                  <Link
+                    href="/auth/check-email"
+                    className="mt-3 inline-flex text-sm font-black text-orange-600 hover:text-orange-700"
+                  >
+                    {text.checkEmailButton}
+                  </Link>
+                </div>
+              </div>
+            </div>
+
             <p className="text-center text-sm text-gray-500">
-              Don’t have an account?{" "}
+              {text.noAccount}{" "}
               <Link href="/register" className="font-black text-orange-600">
-                Register
+                {text.register}
               </Link>
             </p>
           </form>
